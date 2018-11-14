@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
 import attr
+import argparse
+import glob
+import sys
 
 
 # Model
@@ -57,4 +61,73 @@ def parse_line(line):
             path=m.group('path'),
         )
 
+
+# CLI and main
+
+def valid_datetime_type(arg_datetime_str):
+    """custom argparse type for user datetime values given from the command line"""
+    formats = [
+        '%Y-%m-%dT%H:%M:%S',
+        '%Y-%m-%dT%H:%M',
+        '%Y-%m-%dT%H',
+        '%Y-%m-%d',
+    ]
+    for format_str in formats:
+        try:
+            return datetime.strptime(arg_datetime_str, format_str)
+        except ValueError:
+            pass
+    msg = "Given Datetime ({0}) not valid! Expected format, 'YYYY-mm-dd[THH[:MM[:SS]]]'".format(arg_datetime_str)
+    raise argparse.ArgumentTypeError(msg)
+
+
+def create_parser():
+    parser = argparse.ArgumentParser(description='Read and replay Apache logs')
+    parser.add_argument('target', metavar='URL',
+                        help='The target URL where requests should be directed')
+    parser.add_argument('path', metavar='PATH', nargs='+',
+                        help='Glob expression for log or logs to replay')
+    parser.add_argument('--start', metavar='TIMESTAMP', default=None, type=valid_datetime_type,
+                        help='Minimum timestamp to start')
+    parser.add_argument('--end', metavar='TIMESTAMP', default=None, type=valid_datetime_type,
+                        help='Maximum timestamp when to stop')
+    parser.add_argument('--count', metavar='NUMBER', default=None, type=int,
+                        help='Maximum number of requests to generate')
+    return parser
+
+
+def parse_args(args):
+    parser = create_parser()
+    return parser.parse_args(args)
+
+
+def run(target, path, start=None, end=None, count=None):
+    path_list = sorted(glob.glob(path))
+    if len(path_list) == 0:
+        sys.stderr.write('No files found matching expression {}\n'.format(path))
+    timestamp = None
+    for path in path_list:
+        with open(path, 'r') as f:
+            for line in f:
+                entry = parse_line(line)
+                if start and timestamp < start:
+                    continue
+                if end and timestamp > end:
+                    continue
+                if timestamp is None:
+                    timestamp = entry.timestamp
+                delta = entry.timestamp - timestamp
+                wait = delta.total_seconds()
+                if wait > 0:
+                    time.sleep(wait)
+                print('{} {}'.format(entry.method, entry.path))
+
+
+def main(args):
+    opts = parse_args(args)
+    run(**opts)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
 
