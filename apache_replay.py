@@ -26,7 +26,7 @@ class CommonLog(object):
        return self.status >= 200 and self.status < 300
 
 
-# Parser
+# Line Parser
 
 pattern = (r'(?P<remote_host>[^ ]+) '
            r'(?P<remote_log_name>[^ ]+) '
@@ -87,6 +87,8 @@ def create_parser():
                         help='The target URL where requests should be directed')
     parser.add_argument('path', metavar='PATH', nargs='+',
                         help='Glob expression for log or logs to replay')
+    parser.add_argument('--dryrun', default=False, action='store_true',
+                        help='Only print the actions that will be taken')
     parser.add_argument('--start', metavar='TIMESTAMP', default=None, type=valid_datetime_type,
                         help='Minimum timestamp to start')
     parser.add_argument('--end', metavar='TIMESTAMP', default=None, type=valid_datetime_type,
@@ -101,12 +103,35 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def run(target, path, start=None, end=None, count=None):
+@attr.s(frozen=True)
+class Player(object):
+    start = attr.ib(type=datetime)
+    end = attr.ib(type=datetime)
+    count = attr.ib(type=int)
+    target = attr.ib(type=str)
+
+    def play(self, entry):
+        url = self.target + entry.path
+        print('{} {}'.format(entry.method, url))
+
+
+class DryrunPlayer(Player):
+
+    def play(self, entry):
+        url = self.target + entry.path
+        print('{} {}'.format(entry.method, url))
+
+
+def run(target, path, start=None, end=None, count=None, dryrun=False):
+    player = DryrunPlayer(target) if dryrun else Player(target)
     path_list = sorted(glob.glob(path))
     if len(path_list) == 0:
         sys.stderr.write('No files found matching expression {}\n'.format(path))
     timestamp = None
+    tot_count = 0
     for path in path_list:
+        if tot_count > count:
+            break
         with open(path, 'r') as f:
             for line in f:
                 entry = parse_line(line)
@@ -114,13 +139,19 @@ def run(target, path, start=None, end=None, count=None):
                     continue
                 if end and timestamp > end:
                     continue
+                if entry.method not in ('GET', 'HEAD', 'OPTIONS'):
+                    continue
                 if timestamp is None:
                     timestamp = entry.timestamp
                 delta = entry.timestamp - timestamp
                 wait = delta.total_seconds()
                 if wait > 0:
                     time.sleep(wait)
-                print('{} {}'.format(entry.method, entry.path))
+                player.play(entry)
+                timestamp = entry.timestamp
+                tot_count += 1
+                if tot_count > count:
+                    break
 
 
 def main(args):
