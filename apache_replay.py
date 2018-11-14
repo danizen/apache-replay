@@ -105,9 +105,6 @@ def parse_args(args):
 
 @attr.s(frozen=True)
 class Player(object):
-    start = attr.ib(type=datetime)
-    end = attr.ib(type=datetime)
-    count = attr.ib(type=int)
     target = attr.ib(type=str)
 
     def play(self, entry):
@@ -122,15 +119,23 @@ class DryrunPlayer(Player):
         print('{} {}'.format(entry.method, url))
 
 
-def run(target, path, start=None, end=None, count=None, dryrun=False):
+def run(target, paths, start=None, end=None, max_count=None, dryrun=False):
+
+    if target.endswith('/'):
+        target = target[:-1]
     player = DryrunPlayer(target) if dryrun else Player(target)
-    path_list = sorted(glob.glob(path))
+
+    path_list = []
+    for pattern in paths:
+        path_list += glob.glob(pattern)
+    path_list = sorted(path_list)
+
     if len(path_list) == 0:
         sys.stderr.write('No files found matching expression {}\n'.format(path))
     timestamp = None
     tot_count = 0
     for path in path_list:
-        if tot_count > count:
+        if tot_count >= max_count:
             break
         with open(path, 'r') as f:
             for line in f:
@@ -150,13 +155,14 @@ def run(target, path, start=None, end=None, count=None, dryrun=False):
                 player.play(entry)
                 timestamp = entry.timestamp
                 tot_count += 1
-                if tot_count > count:
+                if tot_count >= max_count:
                     break
 
 
 def main(args):
     opts = parse_args(args)
-    run(**opts)
+    run(opts.target, opts.path,
+        start=opts.start, end=opts.end, max_count=opts.count, dryrun=opts.dryrun)
 
 
 if __name__ == '__main__':
