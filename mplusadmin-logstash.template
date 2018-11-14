@@ -1,0 +1,58 @@
+{
+    "mplusadmin-logstash": {
+        "aliases": { "mplusadmin-logstash" },
+        "mappings": {
+            "_default_": {
+                "_all": {
+                    "enabled": true,
+                    "norms": false
+                },
+                "dynamic_templates": [
+                    {
+                        "message_field": {
+                            "mapping": {
+                                "norms": false,
+                                "type": "text"
+                            },
+                            "match_mapping_type": "string",
+                            "path_match": "message"
+                        }
+                    },
+                    {
+                        "string_fields": {
+                            "mapping": {
+                                "fields": {
+                                    "keyword": {
+                                        "ignore_above": 256,
+                                        "type": "keyword"
+                                    }
+                                },
+                                "norms": false,
+                                "type": "text"
+                            },
+                            "match": "*",
+                            "match_mapping_type": "string"
+                        }
+                    }
+                ],
+                "properties": {
+                    "@timestamp": {
+                        "include_in_all": false,
+                        "type": "date"
+                    },
+                    "@version": {
+                        "include_in_all": false,
+                        "type": "keyword"
+                    },
+                }
+            }
+        },
+        "order": 0,
+        "settings": {
+            "index": {
+                "refresh_interval": "5s"
+            }
+        },
+        "template": "mplusadmin-logstash-*",
+    }
+}
