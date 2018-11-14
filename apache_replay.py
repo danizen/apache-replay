@@ -89,6 +89,8 @@ def create_parser():
                         help='Glob expression for log or logs to replay')
     parser.add_argument('--dryrun', default=False, action='store_true',
                         help='Only print the actions that will be taken')
+    parser.add_argument('--rate', type=float, default=0.0,
+                        help='How fast or slow to playback')
     parser.add_argument('--start', metavar='TIMESTAMP', default=None, type=valid_datetime_type,
                         help='Minimum timestamp to start')
     parser.add_argument('--end', metavar='TIMESTAMP', default=None, type=valid_datetime_type,
@@ -107,19 +109,19 @@ def parse_args(args):
 class Player(object):
     target = attr.ib(type=str)
 
-    def play(self, entry):
+    def play(self, elapsed, entry):
         url = self.target + entry.path
-        print('{} {}'.format(entry.method, url))
+        print('{:.3f} {} {}'.format(elapsed, entry.method, url))
 
 
 class DryrunPlayer(Player):
 
-    def play(self, entry):
+    def play(self, elapsed, entry):
         url = self.target + entry.path
-        print('{} {}'.format(entry.method, url))
+        print('{:.3f} {} {}'.format(elapsed, entry.method, url))
 
 
-def run(target, paths, start=None, end=None, max_count=None, dryrun=False):
+def run(target, paths, start=None, end=None, rate=0.0, max_count=None, dryrun=False):
 
     if target.endswith('/'):
         target = target[:-1]
@@ -132,7 +134,11 @@ def run(target, paths, start=None, end=None, max_count=None, dryrun=False):
 
     if len(path_list) == 0:
         sys.stderr.write('No files found matching expression {}\n'.format(path))
+
+    if not max_count:
+        max_count = sys.maxsize
     timestamp = None
+    elapsed = 0.0
     tot_count = 0
     for path in path_list:
         if tot_count >= max_count:
@@ -148,11 +154,12 @@ def run(target, paths, start=None, end=None, max_count=None, dryrun=False):
                     continue
                 if timestamp is None:
                     timestamp = entry.timestamp
-                delta = entry.timestamp - timestamp
-                wait = delta.total_seconds()
+                delta = (entry.timestamp - timestamp).total_seconds()
+                wait = rate * delta
                 if wait > 0:
                     time.sleep(wait)
-                player.play(entry)
+                elapsed += delta
+                player.play(elapsed, entry)
                 timestamp = entry.timestamp
                 tot_count += 1
                 if tot_count >= max_count:
@@ -162,7 +169,7 @@ def run(target, paths, start=None, end=None, max_count=None, dryrun=False):
 def main(args):
     opts = parse_args(args)
     run(opts.target, opts.path,
-        start=opts.start, end=opts.end, max_count=opts.count, dryrun=opts.dryrun)
+        start=opts.start, end=opts.end, rate=opts.rate, max_count=opts.count, dryrun=opts.dryrun)
 
 
 if __name__ == '__main__':
