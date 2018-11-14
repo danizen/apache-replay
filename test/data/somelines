@@ -1,0 +1,3 @@
+130.14.16.172 - - [01/Nov/2018:19:13:14 -0400] "GET / HTTP/1.1" 400 2778 "-" "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0)"
+130.14.16.172 - - [01/Nov/2018:19:13:14 -0400] "GET /<IMG%20SRC=\"javascript:alert(cross_site_scripting.nasl);\">.asp HTTP/1.1" 400 2778 "-" "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0)"
+130.14.16.172 - - [01/Nov/2018:19:13:14 -0400] "GET /pls/portal/DEV7_PORTAL_DEMO.ORG_CHART.SHOW HTTP/1.1" 400 2778 "-" "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0)"
