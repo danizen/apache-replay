@@ -18,6 +18,7 @@ class CommonLog(object):
     timestamp = attr.ib(type=datetime)
     method = attr.ib()
     path = attr.ib()
+    protocol = attr.ib()
     status = attr.ib(type=int)
     content_length = attr.ib(type=int)
 
@@ -32,7 +33,7 @@ pattern = (r'(?P<remote_host>[^ ]+) '
            r'(?P<remote_log_name>[^ ]+) '
            r'(?P<remote_user>[^ ]+) '
            r'\[(?P<timestamp>[^\]]+)\] '
-           r'"(?P<method>GET|POST|PUT|TRACE|OPTIONS|HEAD|DELETE) (?P<path>[^"]+)" '
+           r'"(?P<request_first_line>[^"]+)" '
            r'(?P<status>\d+) '
            r'(?P<content_length>\d+)')
 
@@ -50,6 +51,12 @@ def parse_line(line):
         timestamp = datetime.strptime(m.group('timestamp'), '%d/%b/%Y:%H:%M:%S %z')
         status = int(m.group('status'))
         content_length = int(m.group('content_length'))
+        first_line = m.group('request_first_line').split(' ')
+        if len(first_line) == 2:
+            method, path = first_line
+            protocol = None
+        else:
+            method, path, protocol = first_line
         return CommonLog(
             remote_host=m.group('remote_host'),
             remote_log_name=remote_log_name, 
@@ -57,8 +64,9 @@ def parse_line(line):
             timestamp=timestamp,
             status=status,
             content_length=content_length,
-            method=m.group('method'),
-            path=m.group('path'),
+            method=method,
+            path=path,
+            protocol=protocol,
         )
 
 
@@ -111,14 +119,14 @@ class Player(object):
 
     def play(self, elapsed, entry):
         url = self.target + entry.path
-        print('{:.3f} {} {}'.format(elapsed, entry.method, url))
+        print('{:-10d}s - {} {}'.format(int(elapsed), entry.method, url))
 
 
 class DryrunPlayer(Player):
 
     def play(self, elapsed, entry):
         url = self.target + entry.path
-        print('{:.3f} {} {}'.format(elapsed, entry.method, url))
+        print('{:-10d}s - {} {}'.format(int(elapsed), entry.method, url))
 
 
 def run(target, paths, start=None, end=None, rate=0.0, max_count=None, dryrun=False):
@@ -144,26 +152,33 @@ def run(target, paths, start=None, end=None, rate=0.0, max_count=None, dryrun=Fa
         if tot_count >= max_count:
             break
         with open(path, 'r') as f:
+            lineno = 0
             for line in f:
-                entry = parse_line(line)
-                if start and timestamp < start:
-                    continue
-                if end and timestamp > end:
-                    continue
-                if entry.method not in ('GET', 'HEAD', 'OPTIONS'):
-                    continue
-                if timestamp is None:
+                lineno += 1   
+                try: 
+                    entry = parse_line(line)
+                    if start and timestamp < start:
+                        continue
+                    if end and timestamp > end:
+                        continue
+                    if entry.method not in ('GET', 'HEAD', 'OPTIONS'):
+                        continue
+                    if timestamp is None:
+                        timestamp = entry.timestamp
+                    delta = (entry.timestamp - timestamp).total_seconds()
+                    wait = rate * delta
+                    if wait > 0:
+                        time.sleep(wait)
+                    elapsed += delta
+                    player.play(elapsed, entry)
                     timestamp = entry.timestamp
-                delta = (entry.timestamp - timestamp).total_seconds()
-                wait = rate * delta
-                if wait > 0:
-                    time.sleep(wait)
-                elapsed += delta
-                player.play(elapsed, entry)
-                timestamp = entry.timestamp
-                tot_count += 1
-                if tot_count >= max_count:
-                    break
+                    tot_count += 1
+                    if tot_count >= max_count:
+                        break
+                except Exception:
+                    sys.stderr.write('Error at line {} of {}\n'.format(lineno, path))
+                    sys.exit(1)
+                
 
 
 def main(args):
