@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
 import attr
 import argparse
 import glob
 import sys
 
-from urllib.request import Request, urlopen
+import requests
 
 
 # Model
@@ -60,7 +60,7 @@ class Parser(object):
     last_timestamp = None
     elapsed = 0.0
     expr = re.compile(COMMON_LOG_PATTERN)
-    
+
     def parse(self, line):
         m = self.expr.match(line)
         if not m:
@@ -87,7 +87,7 @@ class Parser(object):
                 method, path, protocol = first_line
             return CommonLog(
                 remote_host=m.group('remote_host'),
-                remote_log_name=remote_log_name, 
+                remote_log_name=remote_log_name,
                 remote_user=remote_user,
                 timestamp=timestamp,
                 status=status,
@@ -112,8 +112,8 @@ def entries_from(pathlist, start=None, end=None, max_count=None):
         with open(path, 'r') as f:
             lineno = 0
             for line in f:
-                lineno += 1   
-                try: 
+                lineno += 1
+                try:
                     entry = parser.parse(line)
                     if start and entry.timestamp < start:
                         continue
@@ -127,26 +127,47 @@ def entries_from(pathlist, start=None, end=None, max_count=None):
                         break
                 except Exception as e:
                     raise ParserException(path, lineno) from e
-    
+
 
 # Players - do something with the logs
 
-@attr.s(frozen=True)
+@attr.s
 class Player(object):
     target = attr.ib(type=str)
-    timeout = attr.ib(type=int, default=5.0)
+    timeout = attr.ib(type=float, default=5.0)
+    count = 0
+
+    def after_play(self, elapsed, entry):
+        pass
+
+    def play(self, elapsed, entry):
+        self.after_play(elapsed, entry)
+        self.count += 1
+
+class RePlayer(Player):
 
     def play(self, elapsed, entry):
         url = self.target + entry.path
-        request = Request(url, method=entry.method)
-        with urlopen(request, timeout=self.timeout) as response:
-            assert entry.status == response.getcode()
+        try:
+            response = requests.request(entry.method, url, timeout=self.timeout, allow_redirects=False)
+            if entry.status != response.status_code:
+                sys.stderr.write('\n{}: status sb:{}, is:{}\n'.format(
+                    url, entry.status, response.status_code))
+            # we read the response data, but we don't care about it
+            response.content
+        except Exception as e:
+            sys.stderr.write('\n{}'.format(str(e)))
+        super().play(elapsed, entry)
 
+    def after_play(self, elapsed, entry):
+        sys.stdout.write('.')
+        if ((self.count + 1) % 60) == 0:
+            sys.stdout.write('\n')
 
 
 class DryrunPlayer(Player):
 
-    def play(self, elapsed, entry):
+    def after_play(self, elapsed, entry):
         url = self.target + entry.path
         print('{:-10d}s - {} {}'.format(int(elapsed), entry.method, url))
 
@@ -176,14 +197,14 @@ def create_cli_parser():
                         help='The target URL where requests should be directed')
     parser.add_argument('path', metavar='PATH', nargs='+',
                         help='Glob expression for log or logs to replay')
-    parser.add_argument('--dryrun', default=False, action='store_true',
-                        help='Only print the actions that will be taken')
     parser.add_argument('--rate', type=float, default=0.0,
-                        help='How fast or slow to playback')
+                        help='How fast or slow to playback - 0 means as fast as you can.')
     parser.add_argument('--start', metavar='TIMESTAMP', default=None, type=valid_datetime_type,
                         help='Minimum timestamp to start')
     parser.add_argument('--end', metavar='TIMESTAMP', default=None, type=valid_datetime_type,
                         help='Maximum timestamp when to stop')
+    parser.add_argument('--player', metavar='NAME', choices=['print','count','replay'], default='replay',
+                        help='You can count log entries, print new urls, or replay the request')
     parser.add_argument('--count', metavar='NUMBER', default=None, type=int,
                         help='Maximum number of requests to generate')
     return parser
@@ -206,6 +227,8 @@ def run(player, paths, start=None, end=None, rate=0.0, max_count=None):
         elapsed += entry.delta
         player.play(elapsed, entry)
 
+    print('\nTotal Count: {}'.format(player.count))
+
 
 def main(args):
     parser = create_cli_parser()
@@ -214,10 +237,14 @@ def main(args):
     target = opts.target
     if target.endswith('/'):
         target = target[:-1]
-    if opts.dryrun:
+    if opts.player == 'print':
         player = DryrunPlayer(target)
-    else:
+    elif opts.player == 'count':
         player = Player(target)
+    elif opts.player == 'replay':
+        player = RePlayer(target)
+    else:
+        raise ValueError('Invalid value for opts.player')
 
     run(player, opts.path,
         start=opts.start,
@@ -228,4 +255,3 @@ def main(args):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-
