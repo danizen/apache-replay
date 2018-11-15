@@ -161,6 +161,7 @@ class RePlayer(Player):
 
     def after_play(self, elapsed, entry):
         sys.stdout.write('.')
+        sys.stdout.flush()
         if ((self.count + 1) % 60) == 0:
             sys.stdout.write('\n')
 
