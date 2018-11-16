@@ -30,15 +30,15 @@ Generate usage with:
 
 Count the number of requests in November of 2018:
 
-    apache-replay --player count http://localhost:8000/ /var/logs/httpd/access_log.2018-11-*
+    apache-replay --player count https://site.com/ /var/logs/httpd/access_log.2018-11*
 
 Replay those same logs (only GET, HEAD, OPTIONS) against qa-mysite.com:
 
-    apache-replay https://qa-mysite.com/ /var/logs/httpd/access_log.2018-11-*
+    apache-replay https://qasite.com/ /var/logs/httpd/access_log.2018-11*
 
 Only replay 2000 log entries from that file
 
-    apache-replay --count 2000 https://qa-mysite.com/ /var/logs/httpd/access_log.2018-11-*
+    apache-replay --count 2000 https://qasite.com/ /var/logs/httpd/access_log.2018-11*
 
 ## License
 
