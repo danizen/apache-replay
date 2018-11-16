@@ -5,8 +5,7 @@ import argparse
 import glob
 import sys
 
-from .parser import *
-from .player import *
+from apache_replay import *
 
 
 def valid_datetime_type(arg_datetime_str):
