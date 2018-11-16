@@ -1,0 +1,10 @@
+include MANIFEST.in
+include setup.py
+include setup.cfg
+include pytest.ini
+include requirements.txt
+include requirements_dev.txt
+include *.template
+
+recursive-include test *.py
+recursive-include test/data *

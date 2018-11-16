@@ -9,7 +9,6 @@ import sys
 
 import requests
 
-
 # Model
 
 @attr.s(frozen=True)

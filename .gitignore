@@ -4,3 +4,5 @@
 /.cache/
 *.log
 /logs/
+/*.egg-info/
+/dist/
