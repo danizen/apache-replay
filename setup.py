@@ -1,13 +1,13 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name = 'apache-replay',
-    version = '0.0.1rc1',
+    version = '0.0.1',
     url = 'https://github.com/danizen/apache-replay.git',
     author = 'Daniel Davis',
     author_email = 'dan@danizen.net',
     description = 'Facilitates replaying of Apache files in Common Log and Combined Log format',
-    packages = find_packages(),
+    packages = ['apache_replay'],
     entry_points={
         'console_scripts': [
             'apache-replay=apache_replay.cli:main',

@@ -1,8 +1,19 @@
 *.pyc
 *.pyo
-/.idea/
-/.cache/
+
+# Logs
 *.log
 /logs/
+
+# Distribution and Packaging
 /*.egg-info/
 /dist/
+/build/
+
+# Coverage
+coverage.xml
+.coverage
+
+# IDEs
+/.idea/
+/.cache/
