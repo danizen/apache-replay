@@ -24,6 +24,8 @@ setup(
     install_requires = ['attrs', 'requests'],
     tests_require = ['attrs', 'requests', 'pytest', 'pytest-pythonpath', 'pytest-cov', 'tox'],
     classifiers = [
-
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
     ]
 )
