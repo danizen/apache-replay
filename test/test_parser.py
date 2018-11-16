@@ -27,18 +27,18 @@ def test_raises_with(badlines):
     with pytest.raises(ParserException):
         for line in badlines:
             parser.parse(line)
-        
+
 
 def test_entry_generator_parses_all_from(somelines_path):
-    from apache_replay import entries_from, CommonLog
-    entries = list(entries_from([somelines_path]))
+    from apache_replay import parse_entries_from, CommonLog
+    entries = list(parse_entries_from([somelines_path]))
     assert len(entries) == 3
     assert all(isinstance(entry, CommonLog) for entry in entries)
 
 
 def test_entry_generator_raises_from(badlines_path):
-    from apache_replay import entries_from, ParserException
+    from apache_replay import parse_entries_from, ParserException
     with pytest.raises(ParserException):
-        list(entries_from([badlines_path]))
-    
+        list(parse_entries_from([badlines_path]))
+
 
