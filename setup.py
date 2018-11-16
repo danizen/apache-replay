@@ -8,7 +8,7 @@ def get_readme():
 
 setup(
     name = 'apache-replay',
-    version = '0.0.2',
+    version = '0.0.3',
     url = 'https://github.com/danizen/apache-replay.git',
     author = 'Daniel Davis',
     author_email = 'dan@danizen.net',
@@ -18,7 +18,7 @@ setup(
     packages = ['apache_replay'],
     entry_points={
         'console_scripts': [
-            'apache-replay=apache_replay.cli:main',
+            'apache-replay=apache_replay.script:main',
         ]
     },
     install_requires = ['attrs', 'requests'],

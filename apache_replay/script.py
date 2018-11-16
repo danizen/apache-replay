@@ -4,6 +4,7 @@ import time
 import argparse
 import glob
 import sys
+import os
 
 from apache_replay import *
 
@@ -25,8 +26,10 @@ def valid_datetime_type(arg_datetime_str):
     raise argparse.ArgumentTypeError(msg)
 
 
-def create_parser():
-    parser = argparse.ArgumentParser(description='Read and replay Apache logs')
+def create_parser(progname=None):
+    if progname:
+        progname = os.path.basename(progname)
+    parser = argparse.ArgumentParser(description='Read and replay Apache logs', prog=progname)
     parser.add_argument('target', metavar='URL',
                         help='The target URL where requests should be directed')
     parser.add_argument('path', metavar='PATH', nargs='+',
@@ -51,7 +54,10 @@ def run(player, paths, start=None, end=None, rate=0.0, max_count=None):
     path_list = sorted(path_list)
 
     if len(path_list) == 0:
-        sys.stderr.write('No files found matching expression {}\n'.format(path))
+        sys.stderr.write(
+            'No files found matching your path expression(s): {}\n'.format(','.join(paths))
+        )
+        sys.exit(1)
 
     elapsed = 0.0
     for entry in parse_entries_from(path_list, start=start, end=end, max_count=max_count):
@@ -65,8 +71,8 @@ def run(player, paths, start=None, end=None, rate=0.0, max_count=None):
 
 
 def main_args(args):
-    parser = create_parser()
-    opts = parser.parse_args(args)
+    parser = create_parser(args[0])
+    opts = parser.parse_args(args[1:])
 
     target = opts.target
     if target.endswith('/'):
@@ -87,7 +93,7 @@ def main_args(args):
         max_count=opts.count)
 
 def main():
-    return main_args(sys.argv[1:])
+    return main_args(sys.argv)
 
 
 if __name__ == '__main__':
