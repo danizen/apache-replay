@@ -4,4 +4,4 @@ ipython
 pytest
 pytest-pythonpath
 pytest-cov
-
+tox

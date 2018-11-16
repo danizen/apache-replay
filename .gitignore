@@ -10,7 +10,8 @@
 /dist/
 /build/
 
-# Coverage
+# Testing and Coverage
+/.tox/
 coverage.xml
 .coverage
 
